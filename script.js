@@ -34,40 +34,57 @@ function renderDeck(){
 }
 
 function addCardInteraction(el){
-  let startX=0, currentX=0, dragging=false;
+  let startX=0, startY=0, currentX=0, currentY=0, dragging=false;
   el.addEventListener('pointerdown', e=>{
-    startX=e.clientX; dragging=true; el.style.transition='none';
+    startX=e.clientX; startY=e.clientY; dragging=true; el.style.transition='none';
+
     const moveHandler = e=>{
       if(!dragging) return;
       currentX = e.clientX - startX;
-      el.style.transform = `translateX(${currentX}px) rotate(${currentX/18}deg) rotateY(${currentX/50}deg) rotateX(${currentX/50}deg)`;
+      currentY = e.clientY - startY;
+      el.style.transform = `translate(${currentX}px, ${currentY}px) rotate(${currentX/12}deg) rotateY(${currentX/50}deg) rotateX(${currentY/50}deg)`;
     };
+
     const upHandler = e=>{
       dragging=false;
       el.releasePointerCapture(e.pointerId);
       el.style.transition='transform 220ms ease, opacity 220ms ease';
       const threshold=120;
-      if(currentX > threshold) swipeCard('right');
-      else if(currentX < -threshold) swipeCard('left');
-      else el.style.transform='translateX(0) rotate(0)';
+      if(currentX > threshold) swipeCard('right', el);
+      else if(currentX < -threshold) swipeCard('left', el);
+      else el.style.transform='translate(0,0) rotate(0)';
       window.removeEventListener('pointermove', moveHandler);
       window.removeEventListener('pointerup', upHandler);
     };
+
     window.addEventListener('pointermove', moveHandler);
     window.addEventListener('pointerup', upHandler);
     el.setPointerCapture(e.pointerId);
   });
 }
 
-function swipeCard(dir){
+function swipeCard(dir, el){
   const top = deck[deck.length-1];
   const correct = (dir==='right' && top.ok) || (dir==='left' && !top.ok);
+
   if(correct){rightCount++; rightCountEl.textContent=rightCount;}
   else{wrongCount++; wrongCountEl.textContent=wrongCount;}
   showFeedback(correct);
+
+  // Karte aus dem Bildschirm swipen
+  const offset = dir==='right' ? 1000 : -1000;
+  el.style.transform = `translateX(${offset}px) rotate(${offset/12}deg)`;
+  el.style.opacity = '0';
+
   deck.pop();
-  updateLeaderboard();
-  renderDeck();
+  setTimeout(()=>{
+    if(deck.length===0){
+      showGameEnd();
+    } else {
+      renderDeck();
+    }
+    updateLeaderboard();
+  }, 220);
 }
 
 function showFeedback(correct){
@@ -81,19 +98,13 @@ function updateLeaderboard(){
 }
 
 function showGameEnd(){
-  const endEl = document.createElement('div');
-  endEl.className='card';
-  endEl.style.fontSize='36px';
-  endEl.style.textAlign='center';
-  endEl.style.color='#00e676';
-  endEl.textContent='🎉 ENDE 🎉';
-  deckEl.appendChild(endEl);
+  // Alle Karten entfernen
+  deckEl.innerHTML = '';
 
-  setTimeout(()=>{
-    leaderboardEl.style.position='fixed';
-    leaderboardEl.style.top='50%';
-    leaderboardEl.style.left='50%';
-    leaderboardEl.style.transform='translate(-50%,-50%) scale(1.2)';
-    leaderboardEl.style.fontSize='20px';
-  }, 1000);
+  // Scoreboard zentrieren
+  leaderboardEl.style.position='fixed';
+  leaderboardEl.style.top='50%';
+  leaderboardEl.style.left='50%';
+  leaderboardEl.style.transform='translate(-50%,-50%) scale(1.2)';
+  leaderboardEl.style.fontSize='22px';
 }
